@@ -35,7 +35,7 @@ def enviar_email_resultados(nome_paciente, cpf, perguntas, respostas):
     assunto = f"Resultados AIVD-Paciente - Paciente: {nome_paciente}"
     
     corpo = f"Avaliação AIVD-Paciente (Autoavaliação) concluída.\n\n"
-    corpo += f"=== DADOS DO(A) PACIENTE ===\n"
+    corpo += f"=== DADOS DO(A) PACIENTE ===\n\n"
     corpo += f"Nome Completo: {nome_paciente}\n"
     corpo += f"CPF de Login: {cpf}\n\n"
     corpo += "================ RESPOSTAS ================\n\n"
