@@ -7,6 +7,11 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
+# ================= CONFIGURAÇÕES DE E-MAIL =================
+SEU_EMAIL = st.secrets["EMAIL_USUARIO"]
+SENHA_DO_EMAIL = st.secrets["SENHA_USUARIO"]
+# ===========================================================
+
 # ================= CONEXÃO COM GOOGLE SHEETS =================
 @st.cache_resource
 def conectar_planilha():
@@ -17,6 +22,7 @@ def conectar_planilha():
     ]
     creds = Credentials.from_service_account_info(creds_dict, scopes=escopos)
     client = gspread.authorize(creds)
+    # CONECTA À PLANILHA CENTRAL DE TOKENS
     return client.open("Controle_Tokens").sheet1 
 
 try:
@@ -33,7 +39,7 @@ def enviar_email_resultados(nome_paciente, token, perguntas, respostas):
     detalhes_respostas = []
 
     for i, resp in enumerate(respostas.values()):
-        score = int(resp[0]) # Pega o primeiro caractere da string (1, 2 ou 3)
+        score = int(resp[0]) # Pega o valor 1, 2 ou 3
         total_pontos += score
         
         if score == 3:
@@ -54,7 +60,7 @@ def enviar_email_resultados(nome_paciente, token, perguntas, respostas):
     corpo += f"Token de Validação: {token}\n\n"
     
     corpo += f"=== RESUMO DO SCORE ===\n"
-    corpo += f"PONTUAÇÃO TOTAL: {total_pontos} de 27\n" # 9 perguntas x 3 pontos = 27 (ajustado para 9 itens)
+    corpo += f"PONTUAÇÃO TOTAL: {total_pontos} de 27\n"
     corpo += f"DEPENDÊNCIA: {contagem['DEPENDÊNCIA']} | SEMI-DEPENDÊNCIA: {contagem['SEMI-DEPENDÊNCIA']} | INDEPENDÊNCIA: {contagem['INDEPENDÊNCIA']}\n\n"
     
     corpo += "================ RESPOSTAS ================\n\n"
@@ -78,7 +84,7 @@ def enviar_email_resultados(nome_paciente, token, perguntas, respostas):
 
 st.set_page_config(page_title="AIVD-Paciente", layout="centered")
 
-# Estilização do botão em Azul
+# Estilização do botão em Azul (Forçado para Dark/Light mode)
 st.markdown("""
     <style>
     div[data-testid="stFormSubmitButton"] > button {
@@ -100,34 +106,43 @@ st.markdown("""
 if "avaliacao_concluida" not in st.session_state:
     st.session_state.avaliacao_concluida = False
 
+# Título Centralizado
 st.markdown("<h1 style='text-align: center;'>Clínica de Psicologia e Psicanálise Bruna Ligoski</h1>", unsafe_allow_html=True)
 
+# ================= TELA FINAL (PÓS-ENVIO) =================
 if st.session_state.avaliacao_concluida:
     st.success("Avaliação concluída e enviada com sucesso! Muito obrigado pela sua colaboração.")
     st.stop()
 
-# ================= VALIDAÇÃO DO TOKEN =================
+# ================= VALIDAÇÃO AUTOMÁTICA DO LINK (TOKEN) =================
 parametros = st.query_params
 token_url = parametros.get("token", None)
 
 if not token_url:
-    st.warning("⚠️ Link de acesso inválido. Solicite um novo link à profissional.")
+    st.warning("⚠️ Link de acesso inválido ou incompleto. Solicite um novo link à profissional.")
     st.stop()
 
 try:
     registros = planilha.get_all_records()
     dados_token = None
-    linha_alvo = 2
+    linha_alvo = 2 
+    
     for i, reg in enumerate(registros):
         if str(reg.get("Token")) == token_url:
             dados_token = reg
             linha_alvo += i
             break
-    if not dados_token or dados_token.get("Status") != "Aberto":
-        st.error("⚠️ Este link é inválido ou já foi utilizado.")
+            
+    if not dados_token:
+        st.error("⚠️ Este link não foi encontrado em nosso sistema.")
         st.stop()
-except:
-    st.error("Erro técnico na validação.")
+        
+    if dados_token.get("Status") != "Aberto":
+        st.error("⚠️ Esta avaliação já foi respondida e o link expirou.")
+        st.stop()
+
+except Exception:
+    st.error("Erro técnico na validação do link. Tente novamente mais tarde.")
     st.stop()
 
 # ================= QUESTIONÁRIO AIVD =================
@@ -139,7 +154,7 @@ st.markdown(linha_fina, unsafe_allow_html=True)
 
 st.write("Leia cada item cuidadosamente. Marque a opção que mais se adequar a você de 1 a 3.")
 st.markdown(linha_fina, unsafe_allow_html=True)
-st.write("**Chave de resposta:** 1 - Não consegue | 2 - Com ajuda parcial | 3 - Sem ajuda")
+st.write("**Opções de resposta:** 1 - Não consegue | 2 - Com ajuda parcial | 3 - Sem ajuda")
 st.markdown(linha_fina, unsafe_allow_html=True)
 
 perguntas = [
@@ -156,7 +171,7 @@ perguntas = [
 
 opcoes_respostas = ["1 - Não consegue", "2 - Com ajuda parcial", "3 - Sem ajuda"]
 
-with st.form("formulario_avaliacao"):
+with st.form("form_aivd_paciente"):
     st.subheader("Identificação")
     nome_paciente = st.text_input("Nome Completo do(a) Paciente *")
     st.divider()
@@ -171,7 +186,7 @@ with st.form("formulario_avaliacao"):
 
     if st.form_submit_button("Enviar Avaliação"):
         if not nome_paciente or any(r is None for r in respostas_coletadas.values()):
-            st.error("Por favor, preencha o nome e responda todas as questões.")
+            st.error("Por favor, preencha o seu nome e responda todas as questões antes de enviar.")
         else:
             if enviar_email_resultados(nome_paciente, token_url, perguntas, respostas_coletadas):
                 try:
@@ -182,4 +197,4 @@ with st.form("formulario_avaliacao"):
                     st.session_state.avaliacao_concluida = True
                     st.rerun()
             else:
-                st.error("Erro ao enviar. Tente novamente.")
+                st.error("Houve um erro no envio. Verifique a conexão ou contate a profissional.")
