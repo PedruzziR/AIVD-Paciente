@@ -7,11 +7,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# ================= CONFIGURAÇÕES DE E-MAIL =================
-SEU_EMAIL = st.secrets["EMAIL_USUARIO"]
-SENHA_DO_EMAIL = st.secrets["SENHA_USUARIO"]
-# ===========================================================
-
 # ================= CONEXÃO COM GOOGLE SHEETS =================
 @st.cache_resource
 def conectar_planilha():
