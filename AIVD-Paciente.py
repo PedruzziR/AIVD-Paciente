@@ -246,9 +246,3 @@ with st.form("form_aivd_paciente"):
                     st.rerun()
             else:
                 st.error("Houve um erro no envio. Verifique a conexão ou contate a profissional.")
-
-
-# --- Keepalive: botão clicado pelo robô de ping para manter o app ativo ---
-with st.sidebar:
-    if st.button("Manter ativo", key="__keepalive__"):
-        pass
